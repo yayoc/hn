@@ -19,7 +19,7 @@ fn write_alt_screen_msg<W: Write>(screen: &mut W) {
 }
 
 fn main() {
-    match hn::get_top_stories(10) {
+    match hn::get_top_stories(1) {
         Ok(s) => println!("{:#?}", s),
         Err(e) => println!("{:#?}", e),
     };
