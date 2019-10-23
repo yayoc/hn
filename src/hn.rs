@@ -28,7 +28,11 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>>
 
     let top_stories_url = format!("{}{}", hn_url, "/v0/topstories.json");
     let mut vec: Vec<i64> = reqwest::get(top_stories_url.as_str())?.json()?;
-    vec = vec[0..num].to_vec();
+    vec = if vec.len() <= num {
+       vec
+    } else {
+        vec[0..num].to_vec()
+    };
 
     let lock: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
     let mut handles: Vec<thread::JoinHandle<Vec<Story>>> = Vec::new();
@@ -82,7 +86,7 @@ mod tests {
     use mockito::mock;
 
     #[test]
-    fn test_get_get_top_stories() {
+    fn test_get_get_top_stories1() {
         let _m1 = mock("GET", "/v0/topstories.json")
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -98,6 +102,46 @@ mod tests {
         assert!(
             get_top_stories(1).is_ok(),
             "get_top_stories should return top stories"
+        );
+        let stories = get_top_stories(1);
+        let story = &stories.unwrap()[0];
+        assert_eq!(story.by, String::from("pg"));
+        assert_eq!(story.id, 1);
+    }
+
+    #[test]
+    fn test_get_get_top_stories2() {
+        let _m1 = mock("GET", "/v0/topstories.json")
+            .with_status(500)
+            .create();
+
+        assert!(
+            get_top_stories(1).is_err(),
+            "get_top_stories should return an error"
+        );
+    }
+
+    #[test]
+    fn test_get_get_top_stories3() {
+        let _m1 = mock("GET", "/v0/topstories.json")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body("[1,2]")
+            .create();
+
+        let _m2 = mock("GET", "/v0/item/1.json")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body("{\"by\":\"pg\",\"descendants\":15,\"id\":1,\"kids\":[15,234509,487171,454426,454424,454410,82729],\"score\":57,\"time\":1160418111,\"title\":\"Y Combinator\",\"type\":\"story\",\"url\":\"http://ycombinator.com\"}")
+            .create();
+
+        let _m3 = mock("GET", "/v0/item/2.json")
+            .with_status(500)
+            .create();
+
+        assert!(
+            get_top_stories(5).is_ok(),
+            "get_top_stories should return stories."
         );
         let stories = get_top_stories(1);
         let story = &stories.unwrap()[0];
