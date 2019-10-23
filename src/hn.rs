@@ -1,8 +1,6 @@
 extern crate num_cpus;
 extern crate reqwest;
 
-#[cfg(test)]
-use mockito;
 use serde::Deserialize;
 use std::io::Read;
 use std::ops::DerefMut;
@@ -11,6 +9,9 @@ use std::sync::LockResult;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::thread;
+
+#[cfg(test)]
+use mockito;
 
 fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
     let result: LockResult<MutexGuard<usize>> = cursor.lock();
@@ -29,7 +30,7 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>>
     let top_stories_url = format!("{}{}", hn_url, "/v0/topstories.json");
     let mut vec: Vec<i64> = reqwest::get(top_stories_url.as_str())?.json()?;
     vec = if vec.len() <= num {
-       vec
+        vec
     } else {
         vec[0..num].to_vec()
     };
@@ -52,8 +53,13 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>>
                 }
 
                 let story_url = format!("{}/v0/item/{}.json", hn_url2, vec2[i],);
-                let story: Story = reqwest::get(story_url.as_str()).unwrap().json().unwrap();
-                stories.push(story);
+                match reqwest::get(story_url.as_str()) {
+                    Ok(mut res) => match res.json() {
+                        Ok(story) => stories.push(story),
+                        _ => {}
+                    },
+                    _ => {}
+                }
             }
             stories
         }));
@@ -111,9 +117,7 @@ mod tests {
 
     #[test]
     fn test_get_get_top_stories2() {
-        let _m1 = mock("GET", "/v0/topstories.json")
-            .with_status(500)
-            .create();
+        let _m1 = mock("GET", "/v0/topstories.json").with_status(500).create();
 
         assert!(
             get_top_stories(1).is_err(),
@@ -135,9 +139,7 @@ mod tests {
             .with_body("{\"by\":\"pg\",\"descendants\":15,\"id\":1,\"kids\":[15,234509,487171,454426,454424,454410,82729],\"score\":57,\"time\":1160418111,\"title\":\"Y Combinator\",\"type\":\"story\",\"url\":\"http://ycombinator.com\"}")
             .create();
 
-        let _m3 = mock("GET", "/v0/item/2.json")
-            .with_status(500)
-            .create();
+        let _m3 = mock("GET", "/v0/item/2.json").with_status(500).create();
 
         assert!(
             get_top_stories(5).is_ok(),
@@ -147,5 +149,20 @@ mod tests {
         let story = &stories.unwrap()[0];
         assert_eq!(story.by, String::from("pg"));
         assert_eq!(story.id, 1);
+    }
+
+    #[test]
+    fn test_get_get_top_stories4() {
+        let _m1 = mock("GET", "/v0/topstories.json")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body("[]")
+            .create();
+        assert!(
+            get_top_stories(5).is_ok(),
+            "get_top_stories should return stories."
+        );
+        let stories = get_top_stories(1);
+        assert_eq!(stories.unwrap().len(), 0);
     }
 }
