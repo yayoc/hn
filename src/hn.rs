@@ -13,6 +13,19 @@ use std::thread;
 #[cfg(test)]
 use mockito;
 
+#[derive(Deserialize, Debug)]
+pub struct Story {
+    id: i64,
+    by: String,
+    descendants: i64,
+    kids: Option<Vec<i64>>,
+    score: i64,
+    time: i64,
+    title: String,
+    r#type: String,
+    url: Option<String>,
+}
+
 fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
     let result: LockResult<MutexGuard<usize>> = cursor.lock();
     let mut guard: MutexGuard<usize> = result.unwrap();
@@ -21,6 +34,18 @@ fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
     return *temp;
 }
 
+/// Get top stories on Hacker News,
+/// Using /v0/topstories.json and /v0/item/{:id}.json endpoints.
+///
+/// https://github.com/HackerNews/API
+///
+/// # Examples
+/// ```
+/// let stories = match get_top_stories(10) {
+///     Ok(res) => res,
+///     Err(e) => println!("{:#?}", e)
+/// }
+/// ```
 pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>> {
     #[cfg(not(test))]
     let hn_url = "https://hacker-news.firebaseio.com";
@@ -71,19 +96,6 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>>
         stories.append(&mut res);
     }
     Ok(stories)
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Story {
-    id: i64,
-    by: String,
-    descendants: i64,
-    kids: Option<Vec<i64>>,
-    score: i64,
-    time: i64,
-    title: String,
-    r#type: String,
-    url: Option<String>,
 }
 
 #[cfg(test)]
