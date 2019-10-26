@@ -56,18 +56,30 @@ impl App {
         write!(out, "{}", cursor::Goto(1, 1));
 
         for i in self.row_offset..self.row_offset + rows {
-            for c in self.stories[i].title.chars() {
+            let s = self.stories.get(i);
+            if s.is_none() {
+                break;
+            }
+
+            for c in s.unwrap().title.chars() {
                 write!(out, "{}", c);
             }
-            let last = (self.row_offset..self.row_offset + rows).max().unwrap();
-            if i != last {
+            if i < self.row_offset + rows - 1 {
                 write!(out, "\r\n");
             }
+        }
+        let mut row =
+            max(1, self.cursor.row as u16 + 1 - self.row_offset as u16);
+        if self.cursor.row == self.stories.len() {
+            row -= 1;
         }
         write!(
             out,
             "{}",
-            cursor::Goto(self.cursor.column as u16 + 1, self.cursor.row as u16 + 1)
+            cursor::Goto(
+                self.cursor.column as u16 + 1,
+                row
+            )
         );
         // For debug.
         write!(out, "{}", self.row_offset);
