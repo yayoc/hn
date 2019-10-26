@@ -21,9 +21,9 @@ pub struct Story {
     kids: Option<Vec<i64>>,
     score: i64,
     time: i64,
-    title: String,
+    pub title: String,
     r#type: String,
-    url: Option<String>,
+    pub url: Option<String>,
 }
 
 fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
