@@ -18,7 +18,7 @@ mod hn;
 
 struct App {
     stories: Vec<hn::Story>,
-    cur_row: usize,
+    cur_index: usize,
     row_offset: usize,
 }
 
@@ -26,7 +26,7 @@ impl Default for App {
     fn default() -> Self {
         Self {
             stories: Vec::new(),
-            cur_row: 0,
+            cur_index: 0,
             row_offset: 0,
         }
     }
@@ -40,7 +40,7 @@ impl App {
 
     fn open(&mut self, stories: Vec<hn::Story>) {
         self.stories = stories;
-        self.cur_row = 0;
+        self.cur_index = 0;
         self.row_offset = 0;
     }
 
@@ -63,35 +63,22 @@ impl App {
                 write!(out, "\r\n");
             }
         }
-        let mut row =
-            max(1, self.cur_row as u16 + 1 - self.row_offset as u16);
-        if self.cur_row == self.stories.len() {
-            row -= 1;
-        }
-        write!(
-            out,
-            "{}",
-            cursor::Goto(
-                1,
-                row
-            )
-        );
-        // For debug.
-        write!(out, "{}", self.row_offset);
+        let cursor_row = max(1, self.cur_index as u16 + 1 - self.row_offset as u16);
+        write!(out, "{}", cursor::Goto(1, cursor_row));
         out.flush().unwrap();
     }
 
     fn scroll(&mut self) {
         let (rows, _) = Self::terminal_size();
-        self.row_offset = min(self.row_offset, self.cur_row);
-        if self.cur_row + 1 >= rows {
-            self.row_offset = max(self.row_offset, self.cur_row + 1 - rows);
+        self.row_offset = min(self.row_offset, self.cur_index);
+        if self.cur_index + 1 >= rows {
+            self.row_offset = max(self.row_offset, self.cur_index + 1 - rows);
         }
         println!("{:#?}", self.row_offset);
     }
 
     fn open_browser(&self) {
-        let s = &self.stories[self.cur_row];
+        let s = &self.stories[self.cur_index];
         match &s.url {
             Some(u) => {
                 webbrowser::open(u.as_str());
@@ -101,15 +88,15 @@ impl App {
     }
 
     fn cursor_up(&mut self) {
-        if self.cur_row > 0 {
-            self.cur_row -= 1;
+        if self.cur_index > 0 {
+            self.cur_index -= 1;
         }
         self.scroll();
     }
 
     fn cursor_down(&mut self) {
-        if self.cur_row < self.stories.len() {
-            self.cur_row += 1;
+        if self.cur_index < self.stories.len() - 1 {
+            self.cur_index += 1;
         }
         self.scroll();
     }

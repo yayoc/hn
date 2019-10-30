@@ -77,7 +77,7 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>>
                     break;
                 }
 
-                let story_url = format!("{}/v0/item/{}.json", hn_url2, vec2[i],);
+                let story_url = format!("{}/v0/item/{}.json", hn_url2, vec2[cursor - 1],);
                 match reqwest::get(story_url.as_str()) {
                     Ok(mut res) => match res.json() {
                         Ok(story) => stories.push(story),
