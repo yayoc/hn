@@ -13,6 +13,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use webbrowser;
+use std::ops::Sub;
 
 mod hn;
 
@@ -74,7 +75,6 @@ impl App {
         if self.cur_index + 1 >= rows {
             self.row_offset = max(self.row_offset, self.cur_index + 1 - rows);
         }
-        println!("{:#?}", self.row_offset);
     }
 
     fn open_browser(&self) {
@@ -100,6 +100,25 @@ impl App {
         }
         self.scroll();
     }
+
+    fn cursor_jump_up(&mut self) {
+        let jump_row = 10;
+        match self.cur_index.checked_sub(jump_row) {
+            Some(s) => self.cur_index = s,
+            None => self.cur_index = 0
+        }
+        self.scroll();
+    }
+
+    fn cursor_jump_down(&mut self) {
+        let jump_row = 10;
+        if self.cur_index < self.stories.len() - jump_row {
+            self.cur_index += jump_row;
+        } else {
+            self.cur_index = self.stories.len() - 1;
+        }
+        self.scroll();
+    }
 }
 
 fn main() {
@@ -111,7 +130,8 @@ fn main() {
             Arg::with_name("number")
                 .short("n")
                 .long("number")
-                .help("Sets a number of articles (defaults to 50)").takes_value(true),
+                .help("Sets a number of articles (defaults to 50)")
+                .takes_value(true),
         )
         .get_matches();
 
@@ -155,6 +175,12 @@ fn main() {
             }
             Event::Key(Key::Char('\n')) => {
                 app.open_browser();
+            }
+            Event::Key(Key::Ctrl('d')) => {
+                app.cursor_jump_down();
+            }
+            Event::Key(Key::Ctrl('u')) => {
+                app.cursor_jump_up();
             }
             _ => {}
         }
