@@ -3,7 +3,7 @@
 extern crate clap;
 extern crate termion;
 
-use clap::{App as ClapApp, Arg, SubCommand};
+use clap::{App as ClapApp, Arg};
 use std::cmp::{max, min};
 use std::io::{stdin, stdout, Write};
 use termion::clear;
@@ -13,7 +13,6 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use webbrowser;
-use std::ops::Sub;
 
 mod hn;
 
@@ -105,7 +104,7 @@ impl App {
         let jump_row = 10;
         match self.cur_index.checked_sub(jump_row) {
             Some(s) => self.cur_index = s,
-            None => self.cur_index = 0
+            None => self.cur_index = 0,
         }
         self.scroll();
     }
@@ -115,8 +114,26 @@ impl App {
         if self.cur_index < self.stories.len() - jump_row {
             self.cur_index += jump_row;
         } else {
-            self.cur_index = self.stories.len() - 1;
+            self.cur_index = if self.stories.len() > 0 {
+                self.stories.len() - 1
+            } else {
+                0
+            };
         }
+        self.scroll();
+    }
+
+    fn cursor_jump_top(&mut self) {
+        self.cur_index = 0;
+        self.scroll();
+    }
+
+    fn cursor_jump_bottom(&mut self) {
+        self.cur_index = if self.stories.len() > 0 {
+            self.stories.len() - 1
+        } else {
+            0
+        };
         self.scroll();
     }
 }
@@ -181,6 +198,12 @@ fn main() {
             }
             Event::Key(Key::Ctrl('u')) => {
                 app.cursor_jump_up();
+            }
+            Event::Key(Key::Char('g')) => {
+                app.cursor_jump_top();
+            },
+            Event::Key(Key::Char('G')) => {
+                app.cursor_jump_bottom();
             }
             _ => {}
         }
