@@ -2,7 +2,6 @@ extern crate num_cpus;
 extern crate reqwest;
 
 use serde::Deserialize;
-use std::io::Read;
 use std::ops::DerefMut;
 use std::sync::Arc;
 use std::sync::LockResult;
@@ -29,7 +28,7 @@ pub struct Story {
 fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
     let result: LockResult<MutexGuard<usize>> = cursor.lock();
     let mut guard: MutexGuard<usize> = result.unwrap();
-    let mut temp = guard.deref_mut();
+    let temp = guard.deref_mut();
     *temp = *temp + 1;
     return *temp;
 }
@@ -46,7 +45,7 @@ fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
 ///     Err(e) => println!("{:#?}", e)
 /// }
 /// ```
-pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>> {
+pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<dyn std::error::Error>> {
     #[cfg(not(test))]
     let hn_url = "https://hacker-news.firebaseio.com";
     #[cfg(test)]
@@ -60,11 +59,10 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>>
         vec[0..num].to_vec()
     };
 
-    let lock: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
     let mut handles: Vec<thread::JoinHandle<Vec<Story>>> = Vec::new();
     let lock: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
 
-    for i in 0..num_cpus::get() {
+    for _ in 0..num_cpus::get() {
         let mut lock2 = lock.clone();
         let vec2 = vec.clone();
         let hn_url2 = hn_url.clone();

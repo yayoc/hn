@@ -1,17 +1,17 @@
 #![feature(try_trait)]
 
+extern crate clap;
 extern crate termion;
 
+use clap::{App as ClapApp, Arg, SubCommand};
 use std::cmp::{max, min};
 use std::io::{stdin, stdout, Write};
-use std::path::Component::CurDir;
 use termion::clear;
 use termion::cursor;
 use termion::event::{Event, Key};
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
-use termion::screen::*;
 use webbrowser;
 
 mod hn;
@@ -45,7 +45,7 @@ impl App {
     }
 
     fn draw<T: Write>(&self, out: &mut T) {
-        let (rows, cols) = Self::terminal_size();
+        let (rows, _cols) = Self::terminal_size();
 
         write!(out, "{}", clear::All);
         write!(out, "{}", cursor::Goto(1, 1));
@@ -103,6 +103,18 @@ impl App {
 }
 
 fn main() {
+    let matches = ClapApp::new("hn")
+        .version("0.0.1")
+        .author("yayoc <hi@yayoc.com>")
+        .about("CLI to browse Hacker News")
+        .arg(
+            Arg::with_name("number")
+                .short("n")
+                .long("number")
+                .help("Sets a number of articles (defaults to 50)").takes_value(true),
+        )
+        .get_matches();
+
     let stdin = stdin();
     let mut stdout = AlternateScreen::from(stdout().into_raw_mode().unwrap());
     write!(stdout, "{}", clear::All);
@@ -110,7 +122,12 @@ fn main() {
     stdout.flush().unwrap();
 
     let mut stories: Vec<hn::Story> = Vec::new();
-    match hn::get_top_stories(50) {
+    let num = matches
+        .value_of("number")
+        .unwrap_or("50")
+        .parse()
+        .unwrap_or(50);
+    match hn::get_top_stories(num) {
         Ok(mut s) => stories.append(&mut s),
         Err(e) => println!("{:#?}", e),
     };
