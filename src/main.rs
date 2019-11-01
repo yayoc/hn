@@ -5,6 +5,9 @@ extern crate termion;
 
 use clap::{App as ClapApp, Arg};
 use std::io::{stdin, stdout, Write};
+use std::sync::mpsc::channel;
+use std::thread;
+use std::time::Duration;
 use termion::clear;
 use termion::event::{Event, Key};
 use termion::input::TermRead;
@@ -49,40 +52,52 @@ fn main() {
 
     a.draw(&mut stdout);
 
-    for evt in stdin.events() {
-        match evt.unwrap() {
-            Event::Key(Key::Ctrl('c')) => {
-                return;
+    let (tx, rx) = channel();
+
+    thread::spawn(move || {
+        for c in stdin.events() {
+            if let Ok(evt) = c {
+                tx.send(evt).unwrap();
             }
-            Event::Key(Key::Up) => {
-                a.cursor_up();
-            }
-            Event::Key(Key::Char('k')) => {
-                a.cursor_up();
-            }
-            Event::Key(Key::Down) => {
-                a.cursor_down();
-            }
-            Event::Key(Key::Char('j')) => {
-                a.cursor_down();
-            }
-            Event::Key(Key::Char('\n')) => {
-                a.open_browser();
-            }
-            Event::Key(Key::Ctrl('d')) => {
-                a.cursor_jump_down();
-            }
-            Event::Key(Key::Ctrl('u')) => {
-                a.cursor_jump_up();
-            }
-            Event::Key(Key::Char('g')) => {
-                a.cursor_jump_top();
-            }
-            Event::Key(Key::Char('G')) => {
-                a.cursor_jump_bottom();
-            }
-            _ => {}
         }
-        a.draw(&mut stdout);
+    });
+
+    loop {
+        if let Ok(evt) = rx.recv_timeout(Duration::from_millis(16)) {
+            match evt {
+                Event::Key(Key::Ctrl('c')) => {
+                    return;
+                }
+                Event::Key(Key::Up) => {
+                    a.cursor_up();
+                }
+                Event::Key(Key::Char('k')) => {
+                    a.cursor_up();
+                }
+                Event::Key(Key::Down) => {
+                    a.cursor_down();
+                }
+                Event::Key(Key::Char('j')) => {
+                    a.cursor_down();
+                }
+                Event::Key(Key::Char('\n')) => {
+                    a.open_browser();
+                }
+                Event::Key(Key::Ctrl('d')) => {
+                    a.cursor_jump_down();
+                }
+                Event::Key(Key::Ctrl('u')) => {
+                    a.cursor_jump_up();
+                }
+                Event::Key(Key::Char('g')) => {
+                    a.cursor_jump_top();
+                }
+                Event::Key(Key::Char('G')) => {
+                    a.cursor_jump_bottom();
+                }
+                _ => {}
+            }
+            a.draw(&mut stdout);
+        }
     }
 }
