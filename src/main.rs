@@ -34,14 +34,17 @@ fn main() {
         )
         .get_matches();
 
+
     let stdin = stdin();
     let mut stdout = AlternateScreen::from(stdout().into_raw_mode().unwrap());
-    write!(stdout, "{}", clear::All);
-    write!(stdout, "{}", "loading...");
     stdout.flush().unwrap();
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
     terminal.hide_cursor().unwrap();
+
+    let mut a = app::App::default();
+    a.start_loading();
+    ui::draw(&mut terminal, &a).unwrap();
 
     let mut stories: Vec<hn::Story> = Vec::new();
     let num = matches
@@ -53,8 +56,7 @@ fn main() {
         Ok(mut s) => stories.append(&mut s),
         Err(e) => println!("{:#?}", e),
     };
-    let mut a = app::App::default();
-    a.open(stories);
+    a.loaded(stories);
 
     let (tx, rx) = channel();
 
@@ -99,6 +101,16 @@ fn main() {
                 }
                 Event::Key(Key::Char('G')) => {
                     a.cursor_jump_bottom();
+                }
+                Event::Key(Key::Ctrl('r')) => {
+                    a.start_loading();
+                    ui::draw(&mut terminal, &a).unwrap();
+                    let mut stories: Vec<hn::Story> = Vec::new();
+                    match hn::get_top_stories(num) {
+                        Ok(mut s) => stories.append(&mut s),
+                        Err(e) => println!("{:#?}", e),
+                    };
+                    a.loaded(stories);
                 }
                 _ => {}
             }

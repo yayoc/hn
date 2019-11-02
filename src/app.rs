@@ -15,6 +15,8 @@ pub struct App {
     pub stories: Vec<hn::Story>,
     /// Current index of the focused story.
     pub cur_index: usize,
+    /// If waiting for API requests or not.
+    pub is_loading: bool,
 }
 
 impl Default for App {
@@ -22,14 +24,20 @@ impl Default for App {
         Self {
             stories: Vec::new(),
             cur_index: 0,
+            is_loading: false
         }
     }
 }
 
 impl App {
-    pub fn open(&mut self, stories: Vec<hn::Story>) {
-        self.stories = stories;
+    pub fn start_loading(&mut self) {
+        self.is_loading = true;
+    }
+
+    pub fn loaded(&mut self, stories: Vec<hn::Story>) {
         self.cur_index = 0;
+        self.stories = stories;
+        self.is_loading = false;
     }
 
     pub fn open_browser(&self) {
