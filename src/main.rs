@@ -13,9 +13,12 @@ use termion::event::{Event, Key};
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
+use tui::backend::TermionBackend;
+use tui::Terminal;
 
 mod app;
 mod hn;
+mod ui;
 
 fn main() {
     let matches = ClapApp::new("hn")
@@ -36,6 +39,9 @@ fn main() {
     write!(stdout, "{}", clear::All);
     write!(stdout, "{}", "loading...");
     stdout.flush().unwrap();
+    let backend = TermionBackend::new(stdout);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal.hide_cursor().unwrap();
 
     let mut stories: Vec<hn::Story> = Vec::new();
     let num = matches
@@ -50,8 +56,6 @@ fn main() {
     let mut a = app::App::default();
     a.open(stories);
 
-    a.draw(&mut stdout);
-
     let (tx, rx) = channel();
 
     thread::spawn(move || {
@@ -63,6 +67,7 @@ fn main() {
     });
 
     loop {
+        ui::draw(&mut terminal, &a).unwrap();
         if let Ok(evt) = rx.recv_timeout(Duration::from_millis(16)) {
             match evt {
                 Event::Key(Key::Ctrl('c')) => {
@@ -97,7 +102,6 @@ fn main() {
                 }
                 _ => {}
             }
-            a.draw(&mut stdout);
         }
     }
 }
