@@ -8,7 +8,6 @@ use std::io::{stdin, stdout, Write};
 use std::sync::mpsc::channel;
 use std::thread;
 use std::time::Duration;
-use termion::clear;
 use termion::event::{Event, Key};
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;

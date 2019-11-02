@@ -1,13 +1,4 @@
 use crate::hn;
-use std::cmp::{max, min};
-use std::io::Write;
-use termion::clear;
-use termion::cursor;
-use tui::backend::TermionBackend;
-use tui::layout::{Constraint, Corner, Direction, Layout};
-use tui::style::{Color, Modifier, Style};
-use tui::widgets::{Block, Borders, List, SelectableList, Text, Widget};
-use tui::Terminal;
 
 /// The app state.
 pub struct App {
@@ -44,7 +35,7 @@ impl App {
         let s = &self.stories[self.cur_index];
         match &s.url {
             Some(u) => {
-                webbrowser::open(u.as_str());
+                webbrowser::open(u.as_str()).expect("Can't open your browser.");
             }
             None => {}
         }
