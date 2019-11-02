@@ -34,7 +34,6 @@ fn main() {
         )
         .get_matches();
 
-
     let stdin = stdin();
     let mut stdout = AlternateScreen::from(stdout().into_raw_mode().unwrap());
     stdout.flush().unwrap();

@@ -24,7 +24,7 @@ impl Default for App {
         Self {
             stories: Vec::new(),
             cur_index: 0,
-            is_loading: false
+            is_loading: false,
         }
     }
 }

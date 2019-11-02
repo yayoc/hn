@@ -19,7 +19,11 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &app::App) -> Result<()
         if app.is_loading {
             draw_loading(&mut f, chunks[0]);
         } else {
-            draw_list(&mut f, app, chunks[0]);
+            if app.stories.len() == 0 {
+                draw_empty(&mut f, chunks[0]);
+            } else {
+                draw_list(&mut f, app, chunks[0]);
+            }
         }
     })
 }
@@ -28,16 +32,18 @@ fn draw_loading<B>(f: &mut Frame<B>, area: Rect)
 where
     B: Backend,
 {
-    let text = [Text::raw("loading...")];
-    Paragraph::new(text.iter())
-        .wrap(true)
-        .render(f, area);
+    let text = [Text::raw("Loading...")];
+    Paragraph::new(text.iter()).wrap(true).render(f, area);
 }
 
-fn draw_empty<B>(f: &mut Frame<B>, app: &app::App, area: Rect)
+fn draw_empty<B>(f: &mut Frame<B>, area: Rect)
 where
     B: Backend,
 {
+    let text = [Text::raw(
+        "Oops, No article. Please try to reload with CTRL+r",
+    )];
+    Paragraph::new(text.iter()).wrap(true).render(f, area);
 }
 
 fn draw_list<B>(f: &mut Frame<B>, app: &app::App, area: Rect)
