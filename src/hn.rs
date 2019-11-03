@@ -1,8 +1,8 @@
 extern crate num_cpus;
 extern crate reqwest;
 
+use chrono::Utc;
 use serde::Deserialize;
-use std::io::Read;
 use std::ops::DerefMut;
 use std::sync::Arc;
 use std::sync::LockResult;
@@ -10,6 +10,8 @@ use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::thread;
 
+use self::reqwest::header::CONNECTION;
+use crate::time;
 #[cfg(test)]
 use mockito;
 
@@ -26,10 +28,17 @@ pub struct Story {
     pub url: Option<String>,
 }
 
+impl Story {
+    pub fn title_label(&self) -> String {
+        let relative_date = time::get_relative_time(self.time, Utc::now().timestamp());
+        format!("{} ({})", self.title.as_str(), relative_date)
+    }
+}
+
 fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
     let result: LockResult<MutexGuard<usize>> = cursor.lock();
     let mut guard: MutexGuard<usize> = result.unwrap();
-    let mut temp = guard.deref_mut();
+    let temp = guard.deref_mut();
     *temp = *temp + 1;
     return *temp;
 }
@@ -46,7 +55,7 @@ fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
 ///     Err(e) => println!("{:#?}", e)
 /// }
 /// ```
-pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>> {
+pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<dyn std::error::Error>> {
     #[cfg(not(test))]
     let hn_url = "https://hacker-news.firebaseio.com";
     #[cfg(test)]
@@ -60,11 +69,10 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>>
         vec[0..num].to_vec()
     };
 
-    let lock: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
     let mut handles: Vec<thread::JoinHandle<Vec<Story>>> = Vec::new();
     let lock: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
 
-    for i in 0..num_cpus::get() {
+    for _ in 0..num_cpus::get() {
         let mut lock2 = lock.clone();
         let vec2 = vec.clone();
         let hn_url2 = hn_url.clone();
@@ -78,7 +86,12 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<std::error::Error>>
                 }
 
                 let story_url = format!("{}/v0/item/{}.json", hn_url2, vec2[cursor - 1],);
-                match reqwest::get(story_url.as_str()) {
+                let client = reqwest::Client::new();
+                match client
+                    .get(story_url.as_str())
+                    .header(CONNECTION, "Keep-Alive")
+                    .send()
+                {
                     Ok(mut res) => match res.json() {
                         Ok(story) => stories.push(story),
                         _ => {}

@@ -1,146 +1,118 @@
 #![feature(try_trait)]
 
+extern crate clap;
 extern crate termion;
 
-use std::cmp::{max, min};
+use clap::{App as ClapApp, Arg};
 use std::io::{stdin, stdout, Write};
-use std::path::Component::CurDir;
-use termion::clear;
-use termion::cursor;
+use std::sync::mpsc::channel;
+use std::thread;
+use std::time::Duration;
 use termion::event::{Event, Key};
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
-use termion::screen::*;
-use webbrowser;
+use tui::backend::TermionBackend;
+use tui::Terminal;
 
+mod app;
 mod hn;
-
-struct App {
-    stories: Vec<hn::Story>,
-    cur_index: usize,
-    row_offset: usize,
-}
-
-impl Default for App {
-    fn default() -> Self {
-        Self {
-            stories: Vec::new(),
-            cur_index: 0,
-            row_offset: 0,
-        }
-    }
-}
-
-impl App {
-    fn terminal_size() -> (usize, usize) {
-        let (cols, rows) = termion::terminal_size().unwrap();
-        (rows as usize, cols as usize)
-    }
-
-    fn open(&mut self, stories: Vec<hn::Story>) {
-        self.stories = stories;
-        self.cur_index = 0;
-        self.row_offset = 0;
-    }
-
-    fn draw<T: Write>(&self, out: &mut T) {
-        let (rows, cols) = Self::terminal_size();
-
-        write!(out, "{}", clear::All);
-        write!(out, "{}", cursor::Goto(1, 1));
-
-        for i in self.row_offset..self.row_offset + rows {
-            let s = self.stories.get(i);
-            if s.is_none() {
-                break;
-            }
-
-            for c in s.unwrap().title.chars() {
-                write!(out, "{}", c);
-            }
-            if i < self.row_offset + rows - 1 {
-                write!(out, "\r\n");
-            }
-        }
-        let cursor_row = max(1, self.cur_index as u16 + 1 - self.row_offset as u16);
-        write!(out, "{}", cursor::Goto(1, cursor_row));
-        out.flush().unwrap();
-    }
-
-    fn scroll(&mut self) {
-        let (rows, _) = Self::terminal_size();
-        self.row_offset = min(self.row_offset, self.cur_index);
-        if self.cur_index + 1 >= rows {
-            self.row_offset = max(self.row_offset, self.cur_index + 1 - rows);
-        }
-        println!("{:#?}", self.row_offset);
-    }
-
-    fn open_browser(&self) {
-        let s = &self.stories[self.cur_index];
-        match &s.url {
-            Some(u) => {
-                webbrowser::open(u.as_str());
-            }
-            None => {}
-        }
-    }
-
-    fn cursor_up(&mut self) {
-        if self.cur_index > 0 {
-            self.cur_index -= 1;
-        }
-        self.scroll();
-    }
-
-    fn cursor_down(&mut self) {
-        if self.cur_index < self.stories.len() - 1 {
-            self.cur_index += 1;
-        }
-        self.scroll();
-    }
-}
+mod time;
+mod ui;
 
 fn main() {
+    let matches = ClapApp::new("hn")
+        .version("0.0.1")
+        .author("yayoc <hi@yayoc.com>")
+        .about("CLI to browse Hacker News")
+        .arg(
+            Arg::with_name("number")
+                .short("n")
+                .long("number")
+                .help("Sets a number of articles (defaults to 50)")
+                .takes_value(true),
+        )
+        .get_matches();
+
     let stdin = stdin();
     let mut stdout = AlternateScreen::from(stdout().into_raw_mode().unwrap());
-    write!(stdout, "{}", clear::All);
-    write!(stdout, "{}", "loading...");
     stdout.flush().unwrap();
+    let backend = TermionBackend::new(stdout);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal.hide_cursor().unwrap();
+
+    let mut a = app::App::default();
+    a.start_loading();
+    ui::draw(&mut terminal, &a).unwrap();
 
     let mut stories: Vec<hn::Story> = Vec::new();
-    match hn::get_top_stories(50) {
+    let num = matches
+        .value_of("number")
+        .unwrap_or("50")
+        .parse()
+        .unwrap_or(50);
+    match hn::get_top_stories(num) {
         Ok(mut s) => stories.append(&mut s),
         Err(e) => println!("{:#?}", e),
     };
-    let mut app = App::default();
-    app.open(stories);
+    a.loaded(stories);
 
-    app.draw(&mut stdout);
+    let (tx, rx) = channel();
 
-    for evt in stdin.events() {
-        match evt.unwrap() {
-            Event::Key(Key::Ctrl('c')) => {
-                return;
+    thread::spawn(move || {
+        for c in stdin.events() {
+            if let Ok(evt) = c {
+                tx.send(evt).unwrap();
             }
-            Event::Key(Key::Up) => {
-                app.cursor_up();
-            }
-            Event::Key(Key::Char('k')) => {
-                app.cursor_up();
-            }
-            Event::Key(Key::Down) => {
-                app.cursor_down();
-            }
-            Event::Key(Key::Char('j')) => {
-                app.cursor_down();
-            }
-            Event::Key(Key::Char('\n')) => {
-                app.open_browser();
-            }
-            _ => {}
         }
-        app.draw(&mut stdout);
+    });
+
+    loop {
+        ui::draw(&mut terminal, &a).unwrap();
+        if let Ok(evt) = rx.recv_timeout(Duration::from_millis(16)) {
+            match evt {
+                Event::Key(Key::Ctrl('c')) => {
+                    return;
+                }
+                Event::Key(Key::Up) => {
+                    a.cursor_up();
+                }
+                Event::Key(Key::Char('k')) => {
+                    a.cursor_up();
+                }
+                Event::Key(Key::Down) => {
+                    a.cursor_down();
+                }
+                Event::Key(Key::Char('j')) => {
+                    a.cursor_down();
+                }
+                Event::Key(Key::Char('\n')) => {
+                    a.open_browser();
+                }
+                Event::Key(Key::Ctrl('d')) => {
+                    a.cursor_jump_down();
+                }
+                Event::Key(Key::Ctrl('u')) => {
+                    a.cursor_jump_up();
+                }
+                Event::Key(Key::Char('g')) => {
+                    a.cursor_jump_top();
+                }
+                Event::Key(Key::Char('G')) => {
+                    a.cursor_jump_bottom();
+                }
+                Event::Key(Key::Ctrl('r')) => {
+                    a.start_loading();
+                    ui::draw(&mut terminal, &a).unwrap();
+                    let mut stories: Vec<hn::Story> = Vec::new();
+                    match hn::get_top_stories(num) {
+                        Ok(mut s) => stories.append(&mut s),
+                        Err(e) => println!("{:#?}", e),
+                    };
+                    a.loaded(stories);
+                }
+                _ => {}
+            }
+        }
     }
 }
