@@ -17,6 +17,7 @@ use tui::Terminal;
 
 mod app;
 mod hn;
+mod time;
 mod ui;
 
 fn main() {

@@ -4,10 +4,7 @@ use crate::app;
 use tui::backend::Backend;
 use tui::layout::{Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Modifier, Style};
-use tui::widgets::{
-    Block, Borders, Paragraph,
-    SelectableList, Text, Widget,
-};
+use tui::widgets::{Block, Borders, Paragraph, SelectableList, Text, Widget};
 use tui::{Frame, Terminal};
 
 pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &app::App) -> Result<(), io::Error> {
@@ -54,14 +51,11 @@ where
         .constraints([Constraint::Percentage(80)].as_ref())
         .split(area);
     let style = Style::default().fg(Color::White);
+    let items: Vec<String> = app.stories.iter().map(|s| s.title_label()).collect();
 
-    let mut titles: Vec<&str> = Vec::new();
-    for s in app.stories.iter() {
-        titles.push(s.title.as_str());
-    }
     SelectableList::default()
-        .block(Block::default().borders(Borders::ALL).title("Top Stories"))
-        .items(&titles)
+        .block(Block::default().borders(Borders::ALL).title("HN Top Stories"))
+        .items(&items)
         .select(Option::from(app.cur_index))
         .style(style)
         .highlight_style(style.fg(Color::LightGreen).modifier(Modifier::BOLD))

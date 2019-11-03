@@ -1,6 +1,7 @@
 extern crate num_cpus;
 extern crate reqwest;
 
+use chrono::Utc;
 use serde::Deserialize;
 use std::ops::DerefMut;
 use std::sync::Arc;
@@ -9,6 +10,8 @@ use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::thread;
 
+use self::reqwest::header::CONNECTION;
+use crate::time;
 #[cfg(test)]
 use mockito;
 
@@ -23,6 +26,13 @@ pub struct Story {
     pub title: String,
     r#type: String,
     pub url: Option<String>,
+}
+
+impl Story {
+    pub fn title_label(&self) -> String {
+        let relative_date = time::get_relative_time(self.time, Utc::now().timestamp());
+        format!("{} ({})", self.title.as_str(), relative_date)
+    }
 }
 
 fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
@@ -76,7 +86,12 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<dyn std::error::Err
                 }
 
                 let story_url = format!("{}/v0/item/{}.json", hn_url2, vec2[cursor - 1],);
-                match reqwest::get(story_url.as_str()) {
+                let client = reqwest::Client::new();
+                match client
+                    .get(story_url.as_str())
+                    .header(CONNECTION, "Keep-Alive")
+                    .send()
+                {
                     Ok(mut res) => match res.json() {
                         Ok(story) => stories.push(story),
                         _ => {}
