@@ -2,7 +2,7 @@
 > Yet another HackerNews CLI written in Rust.
 
 <p align="center">
-  <img width="180" height="180" src="./.github/hn.png">
+  <img src="./.github/hn.png">
 </p>
 
 ## Key Bindings
