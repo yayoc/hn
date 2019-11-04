@@ -14,12 +14,12 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &app::App) -> Result<()
             .split(f.size());
         if app.is_loading {
             draw_loading(&mut f, chunks[0]);
+            return;
+        }
+        if app.stories.is_empty() {
+            draw_empty(&mut f, chunks[0]);
         } else {
-            if app.stories.len() == 0 {
-                draw_empty(&mut f, chunks[0]);
-            } else {
-                draw_list(&mut f, app, chunks[0]);
-            }
+            draw_list(&mut f, app, chunks[0]);
         }
     })
 }
@@ -54,7 +54,11 @@ where
     let items: Vec<String> = app.stories.iter().map(|s| s.title_label()).collect();
 
     SelectableList::default()
-        .block(Block::default().borders(Borders::ALL).title("HN Top Stories"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("HN Top Stories"),
+        )
         .items(&items)
         .select(Option::from(app.cur_index))
         .style(style)

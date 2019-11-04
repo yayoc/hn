@@ -39,8 +39,8 @@ fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
     let result: LockResult<MutexGuard<usize>> = cursor.lock();
     let mut guard: MutexGuard<usize> = result.unwrap();
     let temp = guard.deref_mut();
-    *temp = *temp + 1;
-    return *temp;
+    *temp += 1;
+    *temp
 }
 
 /// Get top stories on Hacker News,
@@ -74,8 +74,8 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<dyn std::error::Err
 
     for _ in 0..num_cpus::get() {
         let mut lock2 = lock.clone();
+        let hn_url2 = hn_url.to_owned();
         let vec2 = vec.clone();
-        let hn_url2 = hn_url.clone();
         handles.push(thread::spawn(move || {
             let mut stories = Vec::new();
             loop {
@@ -87,16 +87,14 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<dyn std::error::Err
 
                 let story_url = format!("{}/v0/item/{}.json", hn_url2, vec2[cursor - 1],);
                 let client = reqwest::Client::new();
-                match client
+                if let Ok(mut res) = client
                     .get(story_url.as_str())
                     .header(CONNECTION, "Keep-Alive")
                     .send()
                 {
-                    Ok(mut res) => match res.json() {
-                        Ok(story) => stories.push(story),
-                        _ => {}
-                    },
-                    _ => {}
+                    if let Ok(story) = res.json() {
+                        stories.push(story)
+                    }
                 }
             }
             stories

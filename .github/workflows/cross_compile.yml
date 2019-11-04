@@ -1,0 +1,25 @@
+on: [push, pull_request]
+
+name: Cross-compile
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - armv7-unknown-linux-gnueabihf
+          - powerpc64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          target: ${{ matrix.target }}
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target=${{ matrix.target }}
