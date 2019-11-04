@@ -74,6 +74,7 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<dyn std::error::Err
 
     for _ in 0..num_cpus::get() {
         let mut lock2 = lock.clone();
+        let hn_url2 = hn_url.to_owned();
         let vec2 = vec.clone();
         handles.push(thread::spawn(move || {
             let mut stories = Vec::new();
@@ -84,7 +85,7 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<dyn std::error::Err
                     break;
                 }
 
-                let story_url = format!("{}/v0/item/{}.json", hn_url, vec2[cursor - 1],);
+                let story_url = format!("{}/v0/item/{}.json", hn_url2, vec2[cursor - 1],);
                 let client = reqwest::Client::new();
                 if let Ok(mut res) = client
                     .get(story_url.as_str())
