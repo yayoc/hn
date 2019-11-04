@@ -66,7 +66,7 @@ impl App {
         if self.cur_index < self.stories.len() - jump_row {
             self.cur_index += jump_row;
         } else {
-            self.cur_index = if self.stories.len() > 0 {
+            self.cur_index = if !self.stories.is_empty() {
                 self.stories.len() - 1
             } else {
                 0
@@ -79,7 +79,7 @@ impl App {
     }
 
     pub fn cursor_jump_bottom(&mut self) {
-        self.cur_index = if self.stories.len() > 0 {
+        self.cur_index = if !self.stories.is_empty() {
             self.stories.len() - 1
         } else {
             0

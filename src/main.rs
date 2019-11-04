@@ -1,3 +1,6 @@
+#![allow(
+clippy::mutex_atomic,
+)]
 #![feature(try_trait)]
 
 extern crate clap;

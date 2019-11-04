@@ -35,9 +35,9 @@ pub fn get_relative_time(t1: i64, t2: i64) -> String {
         }
     }
     if du.num_seconds() == 1 {
-        return String::from("a second ago");
+        String::from("a second ago")
     } else {
-        return format!("{} seconds ago", du.num_seconds());
+        format!("{} seconds ago", du.num_seconds())
     }
 }
 
