@@ -54,7 +54,11 @@ where
     let items: Vec<String> = app.stories.iter().map(|s| s.title_label()).collect();
 
     SelectableList::default()
-        .block(Block::default().borders(Borders::ALL).title("HN Top Stories"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("HN Top Stories"),
+        )
         .items(&items)
         .select(Option::from(app.cur_index))
         .style(style)
