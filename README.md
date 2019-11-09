@@ -15,7 +15,8 @@
 |CTRL+d|Scroll window downwards|
 |g|Jump to top|
 |G|Jump to bottom|
-|Enter|Open default browser|
+|Enter|Open the article with default browser|
+|c|Open comments with default browser|
 |CTRL+r|Reload articles|
 |CTRL+c|Quit|
 

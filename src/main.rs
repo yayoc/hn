@@ -90,6 +90,9 @@ fn main() {
                 Event::Key(Key::Char('\n')) => {
                     a.open_browser();
                 }
+                Event::Key(Key::Char('c')) => {
+                    a.open_comments();
+                }
                 Event::Key(Key::Ctrl('d')) => {
                     a.cursor_jump_down();
                 }

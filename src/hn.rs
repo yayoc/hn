@@ -17,7 +17,7 @@ use mockito;
 
 #[derive(Deserialize, Debug)]
 pub struct Story {
-    id: i64,
+    pub id: i64,
     by: String,
     descendants: i64,
     kids: Option<Vec<i64>>,

@@ -41,6 +41,12 @@ impl App {
         }
     }
 
+    pub fn open_comments(&self) {
+        let s = &self.stories[self.cur_index];
+        let url = format!("https://news.ycombinator.com/item?id={}", s.id);
+        webbrowser::open(url.as_str()).expect("Can't open your browser.");
+    }
+
     pub fn cursor_up(&mut self) {
         if self.cur_index > 0 {
             self.cur_index -= 1;
