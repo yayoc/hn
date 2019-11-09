@@ -48,14 +48,14 @@ jobs:
         shell: bash
         run: |
           cd target/${{ matrix.target }}/release
-          strip spt
-          tar czvf spotify-tui-${{ matrix.artifact_prefix }}.tar.gz spt
-          shasum -a 256 spotify-tui-${{ matrix.artifact_prefix }}.tar.gz > spotify-tui-${{ matrix.artifact_prefix }}.sha256
+          strip hn
+          tar czvf hn-${{ matrix.artifact_prefix }}.tar.gz hn
+          shasum -a 256 hn-${{ matrix.artifact_prefix }}.tar.gz > hn-${{ matrix.artifact_prefix }}.sha256
       - name: Releasing assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            target/${{ matrix.target }}/release/spotify-tui-${{ matrix.artifact_prefix }}.tar.gz
-            target/${{ matrix.target }}/release/spotify-tui-${{ matrix.artifact_prefix }}.sha256
+            target/${{ matrix.target }}/release/hn-${{ matrix.artifact_prefix }}.tar.gz
+            target/${{ matrix.target }}/release/hn-${{ matrix.artifact_prefix }}.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
