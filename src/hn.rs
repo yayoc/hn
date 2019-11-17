@@ -2,18 +2,21 @@ extern crate num_cpus;
 extern crate reqwest;
 
 use chrono::Utc;
+use futures::future::join_all;
+use futures::Future;
+use futures::Stream;
+use reqwest::r#async::Client;
 use serde::Deserialize;
-use std::ops::DerefMut;
-use std::sync::Arc;
-use std::sync::LockResult;
-use std::sync::Mutex;
-use std::sync::MutexGuard;
-use std::thread;
+use tokio::runtime::Runtime;
+use tokio::sync::mpsc::channel;
 
-use self::reqwest::header::CONNECTION;
 use crate::time;
 #[cfg(test)]
 use mockito;
+
+lazy_static! {
+    pub static ref CLIENT: Client = Client::new();
+}
 
 #[derive(Deserialize, Debug)]
 pub struct Story {
@@ -35,27 +38,19 @@ impl Story {
     }
 }
 
-fn next(cursor: &mut Arc<Mutex<usize>>) -> usize {
-    let result: LockResult<MutexGuard<usize>> = cursor.lock();
-    let mut guard: MutexGuard<usize> = result.unwrap();
-    let temp = guard.deref_mut();
-    *temp += 1;
-    *temp
-}
-
-/// Get top stories on Hacker News,
+/// Fetch top stories on Hacker News,
 /// Using /v0/topstories.json and /v0/item/{:id}.json endpoints.
 ///
 /// https://github.com/HackerNews/API
 ///
 /// # Examples
 /// ```
-/// let stories = match get_top_stories(10) {
+/// let stories = match fetch_top_stories(10) {
 ///     Ok(res) => res,
 ///     Err(e) => println!("{:#?}", e)
 /// }
 /// ```
-pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<dyn std::error::Error>> {
+pub fn fetch_top_stories(num: usize) -> Result<Vec<Story>, reqwest::Error> {
     #[cfg(not(test))]
     let hn_url = "https://hacker-news.firebaseio.com";
     #[cfg(test)]
@@ -68,45 +63,56 @@ pub fn get_top_stories(num: usize) -> Result<Vec<Story>, Box<dyn std::error::Err
     } else {
         vec[0..num].to_vec()
     };
+    fetch_stories(vec)
+}
 
-    let mut handles: Vec<thread::JoinHandle<Vec<Story>>> = Vec::new();
-    let lock: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
+fn fetch_stories(ids: Vec<i64>) -> Result<Vec<Story>, reqwest::Error> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut core = Runtime::new().unwrap();
+    let (tx, rx) = channel(ids.len());
 
-    for _ in 0..num_cpus::get() {
-        let mut lock2 = lock.clone();
-        let hn_url2 = hn_url.to_owned();
-        let vec2 = vec.clone();
-        handles.push(thread::spawn(move || {
-            let mut stories = Vec::new();
-            loop {
-                let cursor = next(&mut lock2);
-
-                if cursor > vec2.len() {
-                    break;
-                }
-
-                let story_url = format!("{}/v0/item/{}.json", hn_url2, vec2[cursor - 1],);
-                let client = reqwest::Client::new();
-                if let Ok(mut res) = client
-                    .get(story_url.as_str())
-                    .header(CONNECTION, "Keep-Alive")
-                    .send()
-                {
-                    if let Ok(story) = res.json() {
-                        stories.push(story)
-                    }
+    let all = ids.into_iter().enumerate().map(move |(i, id)| {
+        let mut tx = tx.clone();
+        fetch_story(id)
+            .then(move |x| tx.try_send((i, x)))
+            .map(|_| ())
+            .map_err(|e| println!("{:?}", e))
+    });
+    core.spawn(join_all(all).map(|_| ()));
+    let mut stories = Vec::new();
+    match rx.take(100 as u64).collect().wait() {
+        Ok(mut x) => {
+            x.sort_by(|a, b| {
+                let (i1, _) = a;
+                let (i2, _) = b;
+                i1.cmp(i2)
+            });
+            for s in x {
+                let (_, story) = s;
+                match story {
+                    Ok(st) => stories.push(st),
+                    _ => {}
                 }
             }
-            stories
-        }));
-    }
-
-    let mut stories = Vec::new();
-    for handle in handles.into_iter() {
-        let mut res = handle.join().unwrap();
-        stories.append(&mut res);
-    }
+        }
+        Err(e) => eprintln!("{:?}", e),
+    };
     Ok(stories)
+}
+
+fn fetch_story(id: i64) -> impl Future<Item = Story, Error = reqwest::Error> {
+    #[cfg(not(test))]
+    let hn_url = "https://hacker-news.firebaseio.com";
+    #[cfg(test)]
+    let hn_url = &mockito::server_url();
+
+    let url = format!("{}/v0/item/{}.json", hn_url, id);
+    CLIENT
+        .get(url.as_str())
+        .send()
+        .and_then(move |mut res| res.json())
 }
 
 #[cfg(test)]
