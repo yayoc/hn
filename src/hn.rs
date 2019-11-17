@@ -73,6 +73,7 @@ fn fetch_stories(ids: Vec<i64>) -> Result<Vec<Story>, reqwest::Error> {
     let mut core = Runtime::new().unwrap();
     let (tx, rx) = channel(ids.len());
 
+    let num = ids.len().clone();
     let all = ids.into_iter().enumerate().map(move |(i, id)| {
         let mut tx = tx.clone();
         fetch_story(id)
@@ -82,7 +83,7 @@ fn fetch_stories(ids: Vec<i64>) -> Result<Vec<Story>, reqwest::Error> {
     });
     core.spawn(join_all(all).map(|_| ()));
     let mut stories = Vec::new();
-    match rx.take(100 as u64).collect().wait() {
+    match rx.take(num as u64).collect().wait() {
         Ok(mut x) => {
             x.sort_by(|a, b| {
                 let (i1, _) = a;

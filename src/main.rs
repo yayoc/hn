@@ -112,7 +112,7 @@ fn main() {
                     a.start_loading();
                     ui::draw(&mut terminal, &a).unwrap();
                     let mut stories: Vec<hn::Story> = Vec::new();
-                    match hn::get_top_stories(num) {
+                    match hn::fetch_top_stories(num) {
                         Ok(mut s) => stories.append(&mut s),
                         Err(e) => println!("{:#?}", e),
                     };
