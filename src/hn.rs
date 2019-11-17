@@ -73,7 +73,7 @@ fn fetch_stories(ids: Vec<i64>) -> Result<Vec<Story>, reqwest::Error> {
     let mut core = Runtime::new().unwrap();
     let (tx, rx) = channel(ids.len());
 
-    let num = ids.len().clone();
+    let num = ids.len();
     let all = ids.into_iter().enumerate().map(move |(i, id)| {
         let mut tx = tx.clone();
         fetch_story(id)
@@ -92,9 +92,8 @@ fn fetch_stories(ids: Vec<i64>) -> Result<Vec<Story>, reqwest::Error> {
             });
             for s in x {
                 let (_, story) = s;
-                match story {
-                    Ok(st) => stories.push(st),
-                    _ => {}
+                if let Ok(st) = story {
+                    stories.push(st)
                 }
             }
         }
@@ -118,11 +117,11 @@ fn fetch_story(id: i64) -> impl Future<Item = Story, Error = reqwest::Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::hn::get_top_stories;
+    use crate::hn::fetch_top_stories;
     use mockito::mock;
 
     #[test]
-    fn test_get_get_top_stories1() {
+    fn test_fetch_top_stories1() {
         let _m1 = mock("GET", "/v0/topstories.json")
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -136,27 +135,27 @@ mod tests {
             .create();
 
         assert!(
-            get_top_stories(1).is_ok(),
-            "get_top_stories should return top stories"
+            fetch_top_stories(1).is_ok(),
+            "fetch_top_stories should return top stories"
         );
-        let stories = get_top_stories(1);
+        let stories = fetch_top_stories(1);
         let story = &stories.unwrap()[0];
         assert_eq!(story.by, String::from("pg"));
         assert_eq!(story.id, 1);
     }
 
     #[test]
-    fn test_get_get_top_stories2() {
+    fn test_fetch_top_stories2() {
         let _m1 = mock("GET", "/v0/topstories.json").with_status(500).create();
 
         assert!(
-            get_top_stories(1).is_err(),
-            "get_top_stories should return an error"
+            fetch_top_stories(1).is_err(),
+            "fetch_top_stories should return an error"
         );
     }
 
     #[test]
-    fn test_get_get_top_stories3() {
+    fn test_fetch_top_stories3() {
         let _m1 = mock("GET", "/v0/topstories.json")
             .with_status(200)
             .with_header("content-type", "application/json")
@@ -172,27 +171,27 @@ mod tests {
         let _m3 = mock("GET", "/v0/item/2.json").with_status(500).create();
 
         assert!(
-            get_top_stories(5).is_ok(),
-            "get_top_stories should return stories."
+            fetch_top_stories(5).is_ok(),
+            "fetch_top_stories should return stories."
         );
-        let stories = get_top_stories(1);
+        let stories = fetch_top_stories(1);
         let story = &stories.unwrap()[0];
         assert_eq!(story.by, String::from("pg"));
         assert_eq!(story.id, 1);
     }
 
     #[test]
-    fn test_get_get_top_stories4() {
+    fn test_fetch_top_stories4() {
         let _m1 = mock("GET", "/v0/topstories.json")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body("[]")
             .create();
         assert!(
-            get_top_stories(5).is_ok(),
-            "get_top_stories should return stories."
+            fetch_top_stories(5).is_ok(),
+            "fetch_top_stories should return stories."
         );
-        let stories = get_top_stories(1);
+        let stories = fetch_top_stories(1);
         assert_eq!(stories.unwrap().len(), 0);
     }
 }
