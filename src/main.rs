@@ -4,6 +4,9 @@
 extern crate clap;
 extern crate termion;
 
+#[macro_use]
+extern crate lazy_static;
+
 use clap::{App as ClapApp, Arg};
 use std::io::{stdin, stdout, Write};
 use std::sync::mpsc::channel;
@@ -52,7 +55,7 @@ fn main() {
         .unwrap_or("50")
         .parse()
         .unwrap_or(50);
-    match hn::get_top_stories(num) {
+    match hn::fetch_top_stories(num) {
         Ok(mut s) => stories.append(&mut s),
         Err(e) => println!("{:#?}", e),
     };
@@ -109,7 +112,7 @@ fn main() {
                     a.start_loading();
                     ui::draw(&mut terminal, &a).unwrap();
                     let mut stories: Vec<hn::Story> = Vec::new();
-                    match hn::get_top_stories(num) {
+                    match hn::fetch_top_stories(num) {
                         Ok(mut s) => stories.append(&mut s),
                         Err(e) => println!("{:#?}", e),
                     };
