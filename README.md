@@ -1,5 +1,5 @@
 # HN
-> Yet another HackerNews CLI written in Rust.
+> Yet another HackerNews viewer for terminal written in Rust.
 
 <p align="center">
   <img src="./.github/hn.png">
